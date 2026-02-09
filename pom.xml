@@ -7,16 +7,20 @@
     <parent>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
-        <version>3.2.2</version> <relativePath/> </parent>
+        <version>3.2.2</version>
+        <relativePath/>
+    </parent>
 
     <groupId>iuh.fit.se</groupId>
     <artifactId>tram-cam-xuc-mcs</artifactId>
     <version>1.0-SNAPSHOT</version>
-
-    <packaging>pom</packaging>
-
-    <name>TramCamXuc_MCS</name>
+    <packaging>pom</packaging> <name>TramCamXuc_MCS</name>
     <description>Thesis Project - Microservices Architecture</description>
+
+    <modules>
+        <module>discovery-server</module>
+        <module>api-gateway</module>
+    </modules>
 
     <properties>
         <java.version>17</java.version>
