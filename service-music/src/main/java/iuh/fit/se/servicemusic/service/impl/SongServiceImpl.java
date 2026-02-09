@@ -3,6 +3,8 @@ package iuh.fit.se.servicemusic.service.impl;
 import io.minio.GetPresignedObjectUrlArgs;
 import io.minio.MinioClient;
 import io.minio.http.Method;
+import iuh.fit.se.servicemusic.config.RabbitMQConfig;
+import iuh.fit.se.servicemusic.dto.event.TranscodeRequestEvent;
 import iuh.fit.se.servicemusic.dto.request.SongCreationRequest;
 import iuh.fit.se.servicemusic.dto.response.PresignedUrlResponse;
 import iuh.fit.se.servicemusic.entity.Song;
@@ -12,8 +14,10 @@ import iuh.fit.se.servicemusic.exception.ErrorCode;
 import iuh.fit.se.servicemusic.repository.SongRepository;
 import iuh.fit.se.servicemusic.service.SongService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
@@ -23,6 +27,7 @@ import java.util.concurrent.TimeUnit;
 public class SongServiceImpl implements SongService {
     private final SongRepository songRepository;
     private final MinioClient minioClient;
+    private final RabbitTemplate rabbitTemplate;
 
     @Value("${minio.bucket-name}")
     private String bucketName;
@@ -49,6 +54,7 @@ public class SongServiceImpl implements SongService {
     }
 
     @Override
+    @Transactional
     public Song createSong(SongCreationRequest request, String objectName) {
         Song song = Song.builder()
                 .title(request.getTitle())
@@ -57,6 +63,11 @@ public class SongServiceImpl implements SongService {
                 .status(Status.PENDING)
                 .build();
 
-        return songRepository.save(song);
+        Song savedSong = songRepository.save(song);
+
+        TranscodeRequestEvent event = new TranscodeRequestEvent(savedSong.getId(), objectName);
+        rabbitTemplate.convertAndSend(RabbitMQConfig.EXCHANGE, RabbitMQConfig.TRANSCODE_ROUTING_KEY, event);
+
+        return savedSong;
     }
 }

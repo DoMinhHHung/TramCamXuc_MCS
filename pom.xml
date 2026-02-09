@@ -21,6 +21,7 @@
         <module>discovery-server</module>
         <module>api-gateway</module>
         <module>service-music</module>
+        <module>service-transcode</module>
     </modules>
 
     <properties>
