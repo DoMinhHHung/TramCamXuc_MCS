@@ -1,10 +1,12 @@
 package iuh.fit.se.servicetranscode.config;
 
 import org.springframework.amqp.core.*;
+import org.springframework.amqp.rabbit.config.SimpleRabbitListenerContainerFactory;
 import org.springframework.amqp.rabbit.connection.ConnectionFactory;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.amqp.support.converter.Jackson2JsonMessageConverter;
 import org.springframework.amqp.support.converter.MessageConverter;
+import org.springframework.boot.autoconfigure.amqp.SimpleRabbitListenerContainerFactoryConfigurer;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -14,9 +16,14 @@ public class RabbitMQConfig {
     public static final String EXCHANGE = "music_exchange";
     public static final String TRANSCODE_QUEUE = "transcode_queue";
     public static final String TRANSCODE_ROUTING_KEY = "transcode_key";
-
     public static final String RESULT_QUEUE = "transcode_result_queue";
     public static final String RESULT_ROUTING_KEY = "transcode_result_key";
+
+    public static final String DLX_EXCHANGE = "music_dlx_exchange";
+    public static final String TRANSCODE_DLQ = "transcode_dlq";
+    public static final String RESULT_DLQ = "transcode_result_dlq";
+
+    private static final int MESSAGE_TTL = 3600000;
 
     @Bean
     public TopicExchange exchange() {
@@ -24,13 +31,38 @@ public class RabbitMQConfig {
     }
 
     @Bean
+    public DirectExchange deadLetterExchange() {
+        return new DirectExchange(DLX_EXCHANGE);
+    }
+
+    @Bean
     public Queue transcodeQueue() {
-        return new Queue(TRANSCODE_QUEUE);
+        return QueueBuilder.durable(TRANSCODE_QUEUE)
+                .withArgument("x-dead-letter-exchange", DLX_EXCHANGE)
+                .withArgument("x-dead-letter-routing-key", TRANSCODE_DLQ)
+                .withArgument("x-message-ttl", MESSAGE_TTL)
+                .build();
     }
 
     @Bean
     public Queue resultQueue() {
-        return new Queue(RESULT_QUEUE);
+        return QueueBuilder.durable(RESULT_QUEUE)
+                .withArgument("x-dead-letter-exchange", DLX_EXCHANGE)
+                .withArgument("x-dead-letter-routing-key", RESULT_DLQ)
+                .withArgument("x-message-ttl", MESSAGE_TTL)
+                .build();
+    }
+
+    @Bean
+    public Queue transcodeDLQ() {
+        return QueueBuilder.durable(TRANSCODE_DLQ)
+                .build();
+    }
+
+    @Bean
+    public Queue resultDLQ() {
+        return QueueBuilder.durable(RESULT_DLQ)
+                .build();
     }
 
     @Bean
@@ -44,14 +76,43 @@ public class RabbitMQConfig {
     }
 
     @Bean
+    public Binding bindingTranscodeDLQ(Queue transcodeDLQ, DirectExchange deadLetterExchange) {
+        return BindingBuilder.bind(transcodeDLQ).to(deadLetterExchange).with(TRANSCODE_DLQ);
+    }
+
+    @Bean
+    public Binding bindingResultDLQ(Queue resultDLQ, DirectExchange deadLetterExchange) {
+        return BindingBuilder.bind(resultDLQ).to(deadLetterExchange).with(RESULT_DLQ);
+    }
+
+    @Bean
     public MessageConverter converter() {
         return new Jackson2JsonMessageConverter();
     }
 
     @Bean
-    public AmqpTemplate amqpTemplate(ConnectionFactory connectionFactory) {
+    public RabbitTemplate rabbitTemplate(ConnectionFactory connectionFactory) {
         RabbitTemplate rabbitTemplate = new RabbitTemplate(connectionFactory);
         rabbitTemplate.setMessageConverter(converter());
         return rabbitTemplate;
+    }
+
+    @Bean
+    public SimpleRabbitListenerContainerFactory rabbitListenerContainerFactory(
+            ConnectionFactory connectionFactory,
+            SimpleRabbitListenerContainerFactoryConfigurer configurer) {
+
+        SimpleRabbitListenerContainerFactory factory = new SimpleRabbitListenerContainerFactory();
+        configurer.configure(factory, connectionFactory);
+
+        factory.setMessageConverter(converter());
+
+        factory.setConcurrentConsumers(3);
+        factory.setMaxConcurrentConsumers(10);
+        factory.setPrefetchCount(1);
+        factory.setAcknowledgeMode(AcknowledgeMode.AUTO);
+        factory.setDefaultRequeueRejected(false);
+
+        return factory;
     }
 }
