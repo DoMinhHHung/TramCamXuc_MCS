@@ -52,4 +52,16 @@ public class AuthenticationController {
         var result = authenticationService.outboundAuthenticate(request, type);
         return ApiResponse.<AuthenticationResponse>builder().result(result).build();
     }
+
+    @PostMapping("/forgot-password")
+    public ApiResponse<Void> forgotPassword(@RequestParam String email) {
+        authenticationService.forgotPassword(email);
+        return ApiResponse.<Void>builder().message("OTP sent to email").build();
+    }
+
+    @PostMapping("/reset-password")
+    public ApiResponse<Void> resetPassword(@RequestBody ResetPasswordRequest request) {
+        authenticationService.resetPassword(request);
+        return ApiResponse.<Void>builder().message("Password reset successfully").build();
+    }
 }

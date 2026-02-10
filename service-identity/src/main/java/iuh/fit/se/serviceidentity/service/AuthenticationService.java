@@ -12,4 +12,6 @@ public interface AuthenticationService {
     String generateToken(User user);
     String generateRefreshToken(User user);
     AuthenticationResponse outboundAuthenticate(ExchangeTokenRequest request, String type);
+    void forgotPassword(String email);
+    void resetPassword(ResetPasswordRequest request);
 }

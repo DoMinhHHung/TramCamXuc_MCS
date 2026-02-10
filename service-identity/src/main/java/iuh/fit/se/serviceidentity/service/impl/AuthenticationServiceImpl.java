@@ -5,6 +5,8 @@ import com.nimbusds.jose.crypto.MACSigner;
 import com.nimbusds.jose.crypto.MACVerifier;
 import com.nimbusds.jwt.JWTClaimsSet;
 import com.nimbusds.jwt.SignedJWT;
+import iuh.fit.se.serviceidentity.config.RabbitMQConfig;
+import iuh.fit.se.serviceidentity.dto.event.NotificationEvent;
 import iuh.fit.se.serviceidentity.dto.request.*;
 import iuh.fit.se.serviceidentity.dto.response.AuthenticationResponse;
 import iuh.fit.se.serviceidentity.dto.response.IntrospectResponse;
@@ -17,9 +19,11 @@ import iuh.fit.se.serviceidentity.exception.*;
 import iuh.fit.se.serviceidentity.repository.UserRepository;
 import iuh.fit.se.serviceidentity.repository.httpclient.*;
 import iuh.fit.se.serviceidentity.service.AuthenticationService;
+import iuh.fit.se.serviceidentity.service.OtpService;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.NonFinal;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -29,6 +33,7 @@ import java.text.ParseException;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.Date;
+import java.util.Map;
 import java.util.StringJoiner;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
@@ -43,6 +48,8 @@ public class AuthenticationServiceImpl implements AuthenticationService {
     private final RedisTemplate<String, Object> redisTemplate;
     private final OutboundIdentityClient outboundIdentityClient;
     private final FacebookIdentityClient facebookIdentityClient;
+    private OtpService otpService;
+    private final RabbitTemplate rabbitTemplate;
 
     @NonFinal
     @Value("${jwt.signerKey}")
@@ -64,6 +71,9 @@ public class AuthenticationServiceImpl implements AuthenticationService {
         boolean authenticated = passwordEncoder.matches(request.getPassword(), user.getPassword());
 
         if (!authenticated) throw new AppException(ErrorCode.UNAUTHENTICATED);
+        if (user.getStatus() == AccountStatus.LOCKED) {
+            throw new AppException(ErrorCode.USER_LOCKED);
+        }
 
         var token = generateToken(user);
         var refreshToken = generateRefreshToken(user);
@@ -231,7 +241,6 @@ public class AuthenticationServiceImpl implements AuthenticationService {
 
     @Override
     public AuthenticationResponse outboundAuthenticate(ExchangeTokenRequest request, String type) {
-        // 1. Khai báo biến tạm để hứng dữ liệu đã chuẩn hóa
         String email = null;
         String firstName = null;
         String lastName = null;
@@ -286,7 +295,6 @@ public class AuthenticationServiceImpl implements AuthenticationService {
                     .build());
         });
 
-        // 4. Tạo token hệ thống
         var accessToken = generateToken(user);
         var refreshToken = generateRefreshToken(user);
 
@@ -295,5 +303,33 @@ public class AuthenticationServiceImpl implements AuthenticationService {
                 .refreshToken(refreshToken)
                 .authenticated(true)
                 .build();
+    }
+
+    @Override
+    public void forgotPassword(String email) {
+        var user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));
+
+        String otp = otpService.generateOtp(email);
+
+        NotificationEvent event = NotificationEvent.builder()
+                .channel("EMAIL")
+                .recipient(user.getEmail())
+                .templateCode("FORGOT_PASSWORD_OTP")
+                .params(Map.of("otp", otp, "name", user.getFirstName()))
+                .build();
+
+        rabbitTemplate.convertAndSend(RabbitMQConfig.EXCHANGE, RabbitMQConfig.EMAIL_ROUTING_KEY, event);
+    }
+
+    @Override
+    public void resetPassword(ResetPasswordRequest request) {
+        boolean isValid = otpService.validateOtp(request.getEmail(), request.getOtp());
+        if (!isValid) throw new AppException(ErrorCode.INVALID_OTP);
+
+        var user = userRepository.findByEmail(request.getEmail())
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));
+        user.setPassword(passwordEncoder.encode(request.getNewPassword()));
+        userRepository.save(user);
     }
 }

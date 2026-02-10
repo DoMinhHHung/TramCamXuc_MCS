@@ -34,4 +34,38 @@ public class UserController {
                 .result(userService.getMyInfo())
                 .build();
     }
+
+    @PostMapping("/resend-registration-otp")
+    public ApiResponse<Void> resendRegistrationOtp(@RequestParam String email) {
+        userService.resendRegistrationOtp(email);
+        return ApiResponse.<Void>builder()
+                .message("OTP has been resent")
+                .build();
+    }
+
+    @GetMapping
+    public ApiResponse<PageResponse<UserResponse>> getAllUsers(
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "10") int size
+    ) {
+        return ApiResponse.<PageResponse<UserResponse>>builder()
+                .result(userService.getAllUsers(page, size))
+                .build();
+    }
+
+    @GetMapping("/{userId}")
+    public ApiResponse<UserResponse> getUserDetail(@PathVariable String userId) {
+        return ApiResponse.<UserResponse>builder()
+                .result(userService.getUserDetail(userId))
+                .build();
+    }
+
+
+    @PutMapping("/{userId}/status")
+    public ApiResponse<Void> toggleUserStatus(@PathVariable String userId) {
+        userService.toggleUserStatus(userId);
+        return ApiResponse.<Void>builder()
+                .message("User status updated successfully")
+                .build();
+    }
 }

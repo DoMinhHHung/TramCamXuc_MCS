@@ -34,6 +34,7 @@ public class SecurityConfig {
             "/auth/introspect",
             "/auth/logout",
             "/auth/refresh",
+            "/users/resend-registration-otp",
     };
 
     @Value("${jwt.signerKey}")
@@ -44,6 +45,7 @@ public class SecurityConfig {
         httpSecurity.authorizeHttpRequests(request ->
                 request
                         .requestMatchers(HttpMethod.POST, PUBLIC_POST_ENDPOINTS).permitAll()
+                        .requestMatchers(HttpMethod.GET, "/users").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.GET, "/oauth2/**", "/login/**").permitAll()
                         .requestMatchers(HttpMethod.POST, "/auth/outbound/authentication").permitAll()
                         .anyRequest().authenticated());

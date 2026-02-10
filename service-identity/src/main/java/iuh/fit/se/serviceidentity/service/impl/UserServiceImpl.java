@@ -5,6 +5,7 @@ import iuh.fit.se.serviceidentity.dto.event.NotificationEvent;
 import iuh.fit.se.serviceidentity.dto.mapper.UserMapper;
 import iuh.fit.se.serviceidentity.dto.request.UserCreationRequest;
 import iuh.fit.se.serviceidentity.dto.request.VerifyEmailRequest;
+import iuh.fit.se.serviceidentity.dto.response.PageResponse;
 import iuh.fit.se.serviceidentity.dto.response.UserResponse;
 import iuh.fit.se.serviceidentity.entity.User;
 import iuh.fit.se.serviceidentity.entity.enums.AccountStatus;
@@ -17,6 +18,8 @@ import iuh.fit.se.serviceidentity.service.UserService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
+import org.springframework.data.domain.*;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -90,5 +93,73 @@ public class UserServiceImpl implements UserService {
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));
 
         return userMapper.toUserResponse(user);
+    }
+
+    @Override
+    public void resendRegistrationOtp(String email) {
+        var user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));
+
+        if (user.getStatus() == AccountStatus.ACTIVE) {
+            throw new AppException(ErrorCode.ACCOUNT_ALREADY_VERIFIED);
+        }
+
+        String otp = otpService.generateOtp(email);
+
+        NotificationEvent event = NotificationEvent.builder()
+                .channel("EMAIL")
+                .recipient(user.getEmail())
+                .templateCode("REGISTER_OTP")
+                .params(Map.of("otp", otp, "name", user.getFirstName()))
+                .build();
+
+        rabbitTemplate.convertAndSend(RabbitMQConfig.EXCHANGE, RabbitMQConfig.EMAIL_ROUTING_KEY, event);
+    }
+
+    @Override
+    @PreAuthorize("hasRole('ADMIN')")
+    public PageResponse<UserResponse> getAllUsers(int page, int size) {
+        Sort sort = Sort.by("createdAt").descending();
+        Pageable pageable = PageRequest.of(page - 1, size, sort);
+
+        var pageData = userRepository.findAll(pageable);
+
+        return PageResponse.<UserResponse>builder()
+                .currentPage(page)
+                .pageSize(pageData.getSize())
+                .totalPages(pageData.getTotalPages())
+                .totalElements(pageData.getTotalElements())
+                .data(pageData.getContent().stream().map(userMapper::toUserResponse).toList())
+                .build();
+
+    }
+
+    @Override
+    @PreAuthorize("hasRole('ADMIN')")
+    public UserResponse getUserDetail(String userId) {
+        var user = userRepository.findById(java.util.UUID.fromString(userId))
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));
+
+        return userMapper.toUserResponse(user);
+    }
+
+    @Override
+    @PreAuthorize("hasRole('ADMIN')")
+    public void toggleUserStatus(String userId) {
+        var user = userRepository.findById(java.util.UUID.fromString(userId))
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));
+
+        if (user.getRole() == UserRole.ADMIN) {
+            throw new AppException(ErrorCode.UNAUTHORIZED);
+        }
+
+        if (user.getStatus() == AccountStatus.ACTIVE) {
+            user.setStatus(AccountStatus.LOCKED);
+        } else if (user.getStatus() == AccountStatus.LOCKED) {
+            user.setStatus(AccountStatus.ACTIVE);
+        }
+
+        userRepository.save(user);
+
     }
 }

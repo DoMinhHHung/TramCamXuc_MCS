@@ -13,7 +13,9 @@ public enum ErrorCode {
     UNAUTHORIZED(1005, "You do not have permission", HttpStatus.FORBIDDEN),
     INVALID_OTP(1006, "Invalid OTP", HttpStatus.BAD_REQUEST),
     EMAIL_SEND_FAILED(1007, "Failed to send email", HttpStatus.INTERNAL_SERVER_ERROR),
-    PASSWORD_EXISTED(1008, "Password existed", HttpStatus.BAD_REQUEST);
+    PASSWORD_EXISTED(1008, "Password existed", HttpStatus.BAD_REQUEST),
+    ACCOUNT_ALREADY_VERIFIED(1009, "Account already verified", HttpStatus.BAD_REQUEST),
+    USER_LOCKED(1010, "User account is locked", HttpStatus.FORBIDDEN);
 
     private final int code;
     private final String message;
