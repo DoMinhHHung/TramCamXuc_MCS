@@ -24,6 +24,14 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
 
     private final UserRepository userRepository;
 
+    /**
+     * Loads the authenticated user's attributes from the OAuth2 provider and ensures the corresponding
+     * local user record is created or updated.
+     *
+     * @param userRequest the OAuth2 user request containing client registration and access token
+     * @return the OAuth2User received from the provider
+     * @throws OAuth2AuthenticationException if authentication or user info retrieval from the provider fails
+     */
     @Override
     @Transactional
     public OAuth2User loadUser(OAuth2UserRequest userRequest) throws OAuth2AuthenticationException {
@@ -32,6 +40,18 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
         return processUser(provider, oAuth2User);
     }
 
+    /**
+     * Processes provider-specific OAuth2 attributes to create or update a local User and persist the result.
+     *
+     * Extracts email, provider-specific id, first name, last name, and avatar URL from the given OAuth2User for supported
+     * providers (e.g., "google", "facebook"), then updates an existing User with that email or creates a new one. Persists
+     * changes via the user repository and returns the original OAuth2User.
+     *
+     * @param provider     the OAuth2 provider identifier (expected values include "google" and "facebook")
+     * @param oAuth2User   the OAuth2User containing attributes returned by the provider
+     * @return             the original {@code OAuth2User} passed to the method
+     * @throws RuntimeException if the provider did not supply an email address
+     */
     private OAuth2User processUser(String provider, OAuth2User oAuth2User) {
         String email = null;
         String providerId = null;

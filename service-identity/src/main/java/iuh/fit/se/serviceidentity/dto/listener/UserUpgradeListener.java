@@ -19,6 +19,16 @@ public class UserUpgradeListener {
     private final UserRepository userRepository;
     private final UserFeaturesRepository userFeaturesRepository;
 
+    /**
+     * Apply subscription and feature updates for a user based on an upgrade event.
+     *
+     * Updates the user's subscription status, end date, and current plan, and persists
+     * the user's feature set. Any exception during processing is rethrown so the
+     * message broker can trigger retry behavior.
+     *
+     * @param event contains the user identifier and upgrade details (end date, plan name, and features)
+     * @throws Exception if an error occurs while updating the user or user features
+     */
     @RabbitListener(queues = RabbitMQConfig.IDENTITY_UPGRADE_QUEUE)
     public void handleUserUpgrade(UserUpgradedEvent event) {
         log.info(">>> Nhận yêu cầu nâng cấp cho User: {}", event.getUserId());

@@ -29,6 +29,17 @@ public class OAuth2LoginSuccess implements AuthenticationSuccessHandler {
     @Value("${frontend.url}")
     private String frontendUrl;
 
+    /**
+     * Handles a successful OAuth2 authentication by issuing tokens and redirecting the client to the frontend with an access token.
+     *
+     * <p>Loads the authenticated user's email from the OAuth2 principal, resolves the corresponding User
+     * entity, generates an access (and refresh) token, and sends an HTTP redirect to
+     * "{frontendUrl}/oauth2/redirect?token={accessToken}".</p>
+     *
+     * @param request        the HTTP request for the authentication exchange
+     * @param response       the HTTP response used to send the redirect
+     * @param authentication the authentication object whose principal is an OAuth2User containing an "email" attribute
+     */
     @Override
     public void onAuthenticationSuccess(HttpServletRequest request, HttpServletResponse response, Authentication authentication) throws IOException, ServletException {
         OAuth2User oAuth2User = (OAuth2User) authentication.getPrincipal();

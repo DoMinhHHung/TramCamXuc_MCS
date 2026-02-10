@@ -23,6 +23,13 @@ public class StreamServiceImpl implements StreamService {
     @Value("${minio.bucket-name}")
     private String bucketName;
 
+    /**
+     * Selects the HLS manifest path for a song based on the requested quality and returns it as a streaming response.
+     *
+     * @param songId      the UUID of the song whose manifest is requested
+     * @param userQuality desired quality label; accepted values are "LOSSLESS", "HIGH", or "NORMAL" (defaults to "NORMAL" when null)
+     * @return            a StreamResponse containing the manifest file stream and its determined media type
+     */
     @Override
     public StreamResponse getSongManifest(UUID songId, String userQuality) {
         String path;
@@ -44,12 +51,27 @@ public class StreamServiceImpl implements StreamService {
         return streamFileFromMinio(path);
     }
 
+    /**
+     * Fetches and returns a streaming response for a specific HLS segment of a song.
+     *
+     * @param songId   the UUID of the song
+     * @param quality  the quality directory for the segment (e.g., "128kbps", "256kbps", "LOSSLESS")
+     * @param fileName the segment file name (for example, "segment.ts" or an HLS playlist file)
+     * @return         a StreamResponse containing the object's input stream and its HTTP media type for the requested HLS segment
+     */
     @Override
     public StreamResponse getSongSegment(UUID songId, String quality, String fileName) {
         String path = "hls/" + songId + "/" + quality + "/" + fileName;
         return streamFileFromMinio(path);
     }
 
+    /**
+     * Retrieves an object from MinIO for the given object key and prepares it as a streaming response.
+     *
+     * @param objectKey the MinIO object key (path) to fetch from the configured bucket
+     * @return a StreamResponse containing an InputStreamResource for the object's stream and the resolved MediaType
+     * @throws RuntimeException if the object cannot be retrieved from MinIO
+     */
     private StreamResponse streamFileFromMinio(String objectKey) {
         try {
             InputStream stream = minioClient.getObject(
@@ -66,6 +88,12 @@ public class StreamServiceImpl implements StreamService {
         }
     }
 
+    /**
+     * Resolve HTTP media type from a file name or path based on its extension.
+     *
+     * @param fileName the file name or path used to determine the media type
+     * @return `application/vnd.apple.mpegurl` for `.m3u8`, `video/MP2T` for `.ts`, or `application/octet-stream` otherwise
+     */
     private MediaType determineContentType(String fileName) {
         if (fileName.endsWith(".m3u8")) return MediaType.parseMediaType("application/vnd.apple.mpegurl");
         if (fileName.endsWith(".ts")) return MediaType.parseMediaType("video/MP2T");

@@ -21,6 +21,13 @@ public enum ErrorCode {
     private final String message;
     private final HttpStatus statusCode;
 
+    /**
+     * Create an ErrorCode constant with its numeric code, human-readable message, and associated HTTP status.
+     *
+     * @param code       the numeric identifier for the error
+     * @param message    the default human-readable message for the error
+     * @param statusCode the HTTP status that corresponds to this error
+     */
     ErrorCode(int code, String message, HttpStatus statusCode) {
         this.code = code;
         this.message = message;
