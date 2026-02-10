@@ -22,6 +22,7 @@
         <module>api-gateway</module>
         <module>service-music</module>
         <module>service-transcode</module>
+        <module>service-identity</module>
     </modules>
 
     <properties>
