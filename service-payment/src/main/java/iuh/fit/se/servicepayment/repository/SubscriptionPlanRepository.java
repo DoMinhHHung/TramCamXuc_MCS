@@ -10,6 +10,17 @@ import java.util.UUID;
 
 @Repository
 public interface SubscriptionPlanRepository extends JpaRepository<SubscriptionPlan, UUID> {
-    boolean existsByName(String name);
-    List<SubscriptionPlan> findByIsActiveTrue();
+    /**
+ * Checks whether a subscription plan with the given name exists.
+ *
+ * @param name the subscription plan name to check
+ * @return `true` if a SubscriptionPlan with the given name exists, `false` otherwise
+ */
+boolean existsByName(String name);
+    /**
+ * Retrieve all subscription plans that are marked active.
+ *
+ * @return a list of {@link SubscriptionPlan} objects whose `isActive` field is `true`; an empty list if none exist
+ */
+List<SubscriptionPlan> findByIsActiveTrue();
 }

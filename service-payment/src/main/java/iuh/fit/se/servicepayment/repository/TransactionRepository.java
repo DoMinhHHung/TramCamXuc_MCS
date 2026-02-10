@@ -9,5 +9,11 @@ import java.util.UUID;
 
 @Repository
 public interface TransactionRepository extends JpaRepository<Transaction, UUID> {
-    Optional<Transaction> findByOrderCode(Long orderCode);
+    /**
+ * Finds the transaction associated with the given order code.
+ *
+ * @param orderCode the order code to search by
+ * @return an Optional containing the matching Transaction if found, or an empty Optional if no match exists
+ */
+Optional<Transaction> findByOrderCode(Long orderCode);
 }

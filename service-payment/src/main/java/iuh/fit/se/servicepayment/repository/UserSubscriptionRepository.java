@@ -9,5 +9,11 @@ import java.util.UUID;
 
 @Repository
 public interface UserSubscriptionRepository extends JpaRepository<UserSubscription, UUID> {
-    Optional<UserSubscription> findByUserId(UUID userId);
+    /**
+ * Finds the subscription associated with a specific user.
+ *
+ * @param userId the UUID of the user whose subscription is being retrieved
+ * @return an Optional containing the UserSubscription for the given user ID, or empty if none exists
+ */
+Optional<UserSubscription> findByUserId(UUID userId);
 }

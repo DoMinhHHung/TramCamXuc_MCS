@@ -9,5 +9,11 @@ import java.util.UUID;
 
 @Repository
 public interface UserFeaturesRepository extends JpaRepository<UserFeatures, UUID> {
-    Optional<UserFeatures> findByUserId(UUID userId);
+    /**
+ * Finds the UserFeatures entity associated with the specified user identifier.
+ *
+ * @param userId the UUID of the user whose features are being queried
+ * @return an Optional containing the UserFeatures for the given userId, or empty if none exists
+ */
+Optional<UserFeatures> findByUserId(UUID userId);
 }

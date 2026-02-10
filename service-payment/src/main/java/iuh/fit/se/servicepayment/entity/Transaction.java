@@ -42,6 +42,12 @@ public class Transaction {
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
+    /**
+     * Initialize creation and update timestamps and default the payment status before the entity is persisted.
+     *
+     * Sets both `createdAt` and `updatedAt` to the current time and assigns `PaymentStatus.PENDING`
+     * if `status` is null. Invoked as a JPA `@PrePersist` lifecycle callback.
+     */
     @PrePersist
     protected void onCreate() {
         createdAt = LocalDateTime.now();
@@ -49,6 +55,11 @@ public class Transaction {
         if (status == null) status = PaymentStatus.PENDING;
     }
 
+    /**
+     * Refreshes the entity's update timestamp immediately before it is persisted.
+     *
+     * Sets the `updatedAt` field to the current date and time.
+     */
     @PreUpdate
     protected void onUpdate() {
         updatedAt = LocalDateTime.now();

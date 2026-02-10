@@ -19,6 +19,16 @@ public class SecurityConfig {
     @Value("${jwt.signerKey}")
     private String signerKey;
 
+    /**
+     * Configures the HTTP security rules and returns the application's SecurityFilterChain.
+     *
+     * Disables CSRF protection, requires authentication for requests matching
+     * "/songs/stream/*/play", permits all requests to "/songs/stream/**", and
+     * requires authentication for all other requests. Configures the application
+     * as an OAuth2 Resource Server that validates JWTs using the configured JwtDecoder.
+     *
+     * @return the configured SecurityFilterChain enforcing the authorization rules and JWT resource-server settings
+     */
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
@@ -33,6 +43,13 @@ public class SecurityConfig {
         return http.build();
     }
 
+    /**
+     * Create a JwtDecoder that verifies JWT signatures using the application's signer key with the HS512 MAC algorithm.
+     *
+     * The decoder is configured to use the configured `signerKey` (raw bytes) and restricts signature validation to HS512.
+     *
+     * @return the JwtDecoder configured to verify JWTs with HS512 using the application's signer key
+     */
     @Bean
     public JwtDecoder jwtDecoder() {
         SecretKeySpec secretKeySpec = new SecretKeySpec(signerKey.getBytes(), "HS512");

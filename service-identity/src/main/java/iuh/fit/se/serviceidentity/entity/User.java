@@ -60,6 +60,12 @@ public class User {
     LocalDateTime createdAt;
     LocalDateTime updatedAt;
 
+    /**
+     * Initialize creation/update timestamps and set default provider, account status, and role before the entity is first persisted.
+     *
+     * Sets `createdAt` and `updatedAt` to the current time. If `provider`, `status`, or `role` are null, they are set to
+     * `AuthProvider.LOCAL`, `AccountStatus.PENDING_VERIFICATION`, and `UserRole.USER` respectively.
+     */
     @PrePersist
     protected void onCreate() {
         createdAt = LocalDateTime.now();
@@ -69,6 +75,11 @@ public class User {
         if (role == null) role = UserRole.USER;
     }
 
+    /**
+     * Refreshes the entity's last-modified timestamp before a persistence update.
+     *
+     * Sets {@code updatedAt} to the current date and time.
+     */
     @PreUpdate
     protected void onUpdate() {
         updatedAt = LocalDateTime.now();

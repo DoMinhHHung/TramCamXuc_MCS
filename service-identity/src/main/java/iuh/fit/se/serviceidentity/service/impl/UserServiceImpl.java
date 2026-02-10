@@ -37,6 +37,13 @@ public class UserServiceImpl implements UserService {
     private final RabbitTemplate rabbitTemplate;
     private final OtpService otpService;
 
+    /**
+     * Creates a new user account, persists it, generates a verification OTP, and publishes an email notification event.
+     *
+     * @param request the user creation payload containing registration details (e.g., name, email, password)
+     * @return a UserResponse representing the newly created user (status set to pending verification)
+     * @throws AppException if a user with the given email already exists
+     */
     @Override
     @Transactional
     public UserResponse register(UserCreationRequest request) {
@@ -70,6 +77,13 @@ public class UserServiceImpl implements UserService {
         return userMapper.toUserResponse(user);
     }
 
+    /**
+     * Verifies a user's email by validating the provided OTP and setting the account status to ACTIVE.
+     *
+     * @param request contains the user's email and the one-time password (OTP) to validate
+     * @throws AppException with ErrorCode.INVALID_OTP if the provided OTP is invalid
+     * @throws AppException with ErrorCode.USER_NOT_EXISTED if no user exists for the given email
+     */
     @Override
     public void verifyEmail(VerifyEmailRequest request) {
         boolean isValid = otpService.validateOtp(request.getEmail(), request.getOtpCode());
@@ -84,6 +98,15 @@ public class UserServiceImpl implements UserService {
         userRepository.save(user);
     }
 
+    /**
+     * Retrieves the current authenticated user's profile.
+     *
+     * Loads the user by the principal (authentication name) from the security context
+     * and returns a mapped UserResponse.
+     *
+     * @return the authenticated user's UserResponse
+     * @throws AppException if no user exists for the authenticated principal (ErrorCode.USER_NOT_EXISTED)
+     */
     @Override
     public UserResponse getMyInfo() {
         var context = SecurityContextHolder.getContext();
@@ -95,6 +118,12 @@ public class UserServiceImpl implements UserService {
         return userMapper.toUserResponse(user);
     }
 
+    /**
+     * Resends a registration one-time password (OTP) to the specified user's email.
+     *
+     * @param email the email address of the user to resend the registration OTP to
+     * @throws AppException if the user does not exist (ErrorCode.USER_NOT_EXISTED) or if the account is already verified (ErrorCode.ACCOUNT_ALREADY_VERIFIED)
+     */
     @Override
     public void resendRegistrationOtp(String email) {
         var user = userRepository.findByEmail(email)
@@ -116,6 +145,14 @@ public class UserServiceImpl implements UserService {
         rabbitTemplate.convertAndSend(RabbitMQConfig.EXCHANGE, RabbitMQConfig.EMAIL_ROUTING_KEY, event);
     }
 
+    /**
+     * Retrieves a paginated list of users sorted by creation time in descending order.
+     *
+     * @param page  the 1-based page number to retrieve
+     * @param size  the number of users per page
+     * @return      a PageResponse containing current page, page size, total pages, total elements,
+     *              and a list of UserResponse objects for the requested page (sorted by createdAt descending)
+     */
     @Override
     @PreAuthorize("hasRole('ADMIN')")
     public PageResponse<UserResponse> getAllUsers(int page, int size) {
@@ -134,6 +171,13 @@ public class UserServiceImpl implements UserService {
 
     }
 
+    /**
+     * Retrieve detailed information for a user identified by their UUID string.
+     *
+     * @param userId the user's UUID as a string
+     * @return the user's detailed representation as a UserResponse
+     * @throws AppException with ErrorCode.USER_NOT_EXISTED if no user exists for the given UUID
+     */
     @Override
     @PreAuthorize("hasRole('ADMIN')")
     public UserResponse getUserDetail(String userId) {
@@ -143,6 +187,16 @@ public class UserServiceImpl implements UserService {
         return userMapper.toUserResponse(user);
     }
 
+    /**
+     * Toggle the specified user's account status between ACTIVE and LOCKED.
+     *
+     * <p>Looks up the user by the given UUID string, flips ACTIVE to LOCKED or LOCKED to ACTIVE,
+     * and persists the change.</p>
+     *
+     * @param userId the user's UUID as a string
+     * @throws AppException with ErrorCode.USER_NOT_EXISTED if no user exists for the given id
+     * @throws AppException with ErrorCode.UNAUTHORIZED if the target user has the ADMIN role
+     */
     @Override
     @PreAuthorize("hasRole('ADMIN')")
     public void toggleUserStatus(String userId) {

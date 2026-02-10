@@ -17,6 +17,13 @@ public class PaymentController {
 
     private final PaymentService paymentService;
 
+    /**
+     * Creates a payment link for the specified user based on the provided payment details.
+     *
+     * @param userId the value of the `X-User-Id` request header; a UUID string identifying the user
+     * @param request the payment creation details
+     * @return an ApiResponse containing the created PaymentResponse with the payment link and related metadata
+     */
     @PostMapping("/checkout")
     public ApiResponse<PaymentResponse> createPayment(
             @RequestHeader("X-User-Id") String userId,
@@ -27,6 +34,12 @@ public class PaymentController {
                 .build();
     }
 
+    /**
+     * Processes an incoming PayOS webhook and returns an acknowledgement response.
+     *
+     * @param webhook the PayOS webhook payload to be processed
+     * @return an ApiResponse with no data and a message indicating the webhook was received
+     */
     @PostMapping("/payos_transfer_handler")
     public ApiResponse<Void> handlePayOSWebhook(@RequestBody Webhook webhook) {
         paymentService.handleWebhook(webhook);

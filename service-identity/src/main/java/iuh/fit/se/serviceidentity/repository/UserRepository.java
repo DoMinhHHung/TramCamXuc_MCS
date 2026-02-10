@@ -9,6 +9,18 @@ import java.util.UUID;
 
 @Repository
 public interface UserRepository extends JpaRepository<User, UUID> {
-    boolean existsByEmail(String email);
-    Optional<User> findByEmail(String email);
+    /**
+ * Check whether a user with the specified email exists.
+ *
+ * @param email the email address to look up
+ * @return `true` if a user with the specified email exists, `false` otherwise
+ */
+boolean existsByEmail(String email);
+    /**
+ * Retrieves a user by their email address.
+ *
+ * @param email the user's email address to search for
+ * @return an {@link Optional} containing the {@link User} with the given email if found, otherwise {@link Optional#empty()}
+ */
+Optional<User> findByEmail(String email);
 }
