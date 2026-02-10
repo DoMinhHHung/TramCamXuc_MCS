@@ -121,6 +121,12 @@ public class TranscodeService {
             Files.copy(stream, inputFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
         }
 
+        // Kiểm tra file đã download có hợp lệ không
+        if (!inputFile.exists() || inputFile.length() == 0) {
+            throw new IOException("Downloaded file is empty or does not exist: " + inputFile.getAbsolutePath());
+        }
+
+        log.info("Downloaded file successfully: {} (size: {} bytes)", inputFile.getName(), inputFile.length());
         return inputFile;
     }
 
@@ -138,9 +144,32 @@ public class TranscodeService {
     }
 
     private int probeDuration(File audioFile) throws Exception {
-        FFprobe ffprobe = new FFprobe(ffprobePath);
-        FFmpegProbeResult probeResult = ffprobe.probe(audioFile.getAbsolutePath());
-        return (int) probeResult.getFormat().duration;
+        if (!audioFile.exists()) {
+            throw new IOException("Audio file does not exist: " + audioFile.getAbsolutePath());
+        }
+
+        if (audioFile.length() == 0) {
+            throw new IOException("Audio file is empty: " + audioFile.getAbsolutePath());
+        }
+
+        log.info("Probing audio file: {} (size: {} bytes)", audioFile.getAbsolutePath(), audioFile.length());
+
+        try {
+            FFprobe ffprobe = new FFprobe(ffprobePath);
+            FFmpegProbeResult probeResult = ffprobe.probe(audioFile.getAbsolutePath());
+
+            if (probeResult.getFormat() == null) {
+                throw new IOException("FFprobe could not detect format for file: " + audioFile.getName());
+            }
+
+            double duration = probeResult.getFormat().duration;
+            log.info("Successfully probed duration: {} seconds", duration);
+            return (int) duration;
+        } catch (IOException e) {
+            log.error("FFprobe failed for file: {} (size: {} bytes). Error: {}",
+                audioFile.getAbsolutePath(), audioFile.length(), e.getMessage());
+            throw new IOException("Cannot probe audio file. The file might be corrupted or in an unsupported format.", e);
+        }
     }
 
     private String transcodeQualityWithRetry(UUID songId, File audioFile, Path tempDir,

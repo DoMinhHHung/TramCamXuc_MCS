@@ -23,7 +23,6 @@ public class SecurityConfig {
      * Configures the HTTP security rules and returns the application's SecurityFilterChain.
      *
      * Disables CSRF protection, requires authentication for requests matching
-     * "/songs/stream/*/play", permits all requests to "/songs/stream/**", and
      * requires authentication for all other requests. Configures the application
      * as an OAuth2 Resource Server that validates JWTs using the configured JwtDecoder.
      *
