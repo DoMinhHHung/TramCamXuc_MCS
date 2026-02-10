@@ -24,6 +24,9 @@ public class Genre {
     @Column(nullable = false, unique = true)
     private String key;
 
+    @Column(name = "is_deleted")
+    private boolean deleted = false;
+
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 

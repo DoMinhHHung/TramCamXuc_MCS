@@ -2,6 +2,7 @@ package iuh.fit.se.servicemusic.service.impl;
 
 import iuh.fit.se.servicemusic.dto.mapper.GenreMapper;
 import iuh.fit.se.servicemusic.dto.request.GenreCreationRequest;
+import iuh.fit.se.servicemusic.dto.request.GenreUpdateRequest;
 import iuh.fit.se.servicemusic.dto.response.GenreResponse;
 import iuh.fit.se.servicemusic.entity.Genre;
 import iuh.fit.se.servicemusic.exception.AppException;
@@ -12,6 +13,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.UUID;
 
 @RequiredArgsConstructor
 @Service
@@ -30,8 +32,31 @@ public class GenreServiceImpl implements GenreService {
 
     @Override
     public List<GenreResponse> getAllGenres() {
-        return genreRepository.findAll().stream()
+        return genreRepository.findByDeletedFalse().stream()
                 .map(genreMapper::toResponse)
                 .toList();
+    }
+
+    @Override
+    public GenreResponse updateGenre(UUID id, GenreUpdateRequest request) {
+        Genre genre = genreRepository.findById(id)
+                .orElseThrow(() -> new AppException(ErrorCode.GENRE_NOT_FOUND));
+
+        if (genreRepository.existsByKeyAndIdNot(request.getKey(), id)) {
+            throw new AppException(ErrorCode.GENRE_EXISTED);
+        }
+
+        genreMapper.updateGenre(genre, request);
+
+        return genreMapper.toResponse(genreRepository.save(genre));
+    }
+
+    @Override
+    public void deleteGenre(UUID id) {
+        Genre genre = genreRepository.findById(id)
+                .orElseThrow(() -> new AppException(ErrorCode.GENRE_NOT_FOUND));
+
+        genre.setDeleted(true);
+        genreRepository.save(genre);
     }
 }
