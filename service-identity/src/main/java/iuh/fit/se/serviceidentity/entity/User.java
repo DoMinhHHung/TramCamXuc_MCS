@@ -45,6 +45,18 @@ public class User {
     @Enumerated(EnumType.STRING)
     AccountStatus status;
 
+// Subscription fields
+    @Column(name = "is_subscription_active")
+    @Builder.Default
+    boolean isSubscriptionActive = false;
+
+    @Column(name = "subscription_end_date")
+    LocalDateTime subscriptionEndDate;
+
+    @Column(name = "current_plan_name")
+    String currentPlanName;
+// End of subscription fields
+
     LocalDateTime createdAt;
     LocalDateTime updatedAt;
 
