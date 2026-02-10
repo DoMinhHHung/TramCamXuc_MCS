@@ -16,6 +16,7 @@ import iuh.fit.se.serviceidentity.entity.enums.AccountStatus;
 import iuh.fit.se.serviceidentity.entity.enums.AuthProvider;
 import iuh.fit.se.serviceidentity.entity.enums.UserRole;
 import iuh.fit.se.serviceidentity.exception.*;
+import iuh.fit.se.serviceidentity.repository.UserFeaturesRepository;
 import iuh.fit.se.serviceidentity.repository.UserRepository;
 import iuh.fit.se.serviceidentity.repository.httpclient.*;
 import iuh.fit.se.serviceidentity.service.AuthenticationService;
@@ -31,6 +32,7 @@ import org.springframework.stereotype.Service;
 
 import java.text.ParseException;
 import java.time.Instant;
+import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.Date;
 import java.util.Map;
@@ -50,6 +52,7 @@ public class AuthenticationServiceImpl implements AuthenticationService {
     private final FacebookIdentityClient facebookIdentityClient;
     private OtpService otpService;
     private final RabbitTemplate rabbitTemplate;
+    private final UserFeaturesRepository userFeaturesRepository;
 
     @NonFinal
     @Value("${jwt.signerKey}")
@@ -161,7 +164,7 @@ public class AuthenticationServiceImpl implements AuthenticationService {
     public String generateToken(User user) {
         JWSHeader header = new JWSHeader(JWSAlgorithm.HS512);
 
-        JWTClaimsSet jwtClaimsSet = new JWTClaimsSet.Builder()
+        JWTClaimsSet.Builder claimsBuilder = new JWTClaimsSet.Builder()
                 .subject(user.getId().toString())
                 .issuer("phazelsound.com")
                 .issueTime(new Date())
@@ -169,11 +172,24 @@ public class AuthenticationServiceImpl implements AuthenticationService {
                         Instant.now().plus(VALID_DURATION, ChronoUnit.SECONDS).toEpochMilli()
                 ))
                 .jwtID(UUID.randomUUID().toString())
-                .claim("scope", buildScope(user))
-                .build();
+                .claim("scope", buildScope(user));
+
+        if (user.isSubscriptionActive()
+                && user.getSubscriptionEndDate() != null
+                && user.getSubscriptionEndDate().isAfter(LocalDateTime.now())) {
+
+            // Query vào bảng user_features
+            userFeaturesRepository.findByUserId(user.getId()).ifPresent(userFeatures -> {
+                if (userFeatures.getFeatures() != null) {
+                    userFeatures.getFeatures().forEach((key, value) -> {
+                        claimsBuilder.claim(key, value);
+                    });
+                }
+            });
+        }
+        JWTClaimsSet jwtClaimsSet = claimsBuilder.build();
 
         Payload payload = new Payload(jwtClaimsSet.toJSONObject());
-
         JWSObject jwsObject = new JWSObject(header, payload);
 
         try {
