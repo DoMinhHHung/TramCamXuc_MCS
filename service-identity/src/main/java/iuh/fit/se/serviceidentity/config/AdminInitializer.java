@@ -24,6 +24,12 @@ public class AdminInitializer implements CommandLineRunner {
     @Value("${app.admin.password}")
     private String adminPassword;
 
+    /**
+     * Initializes a default ADMIN account on application startup if an account with the configured admin email does not exist.
+     *
+     * If missing, creates and persists a User with the configured admin email and password (password is encoded),
+     * first name "Super", last name "Admin", role ADMIN, and status ACTIVE. Logs whether the account was created or already existed.
+     */
     @Override
     public void run(String... args) {
         if (userRepository.findByEmail(adminEmail).isEmpty()) {

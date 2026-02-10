@@ -66,6 +66,15 @@ public class AuthenticationServiceImpl implements AuthenticationService {
     @Value("${jwt.refreshable-duration}")
     protected long REFRESHABLE_DURATION;
 
+    /**
+     * Authenticate a user using their email and password and issue access and refresh tokens.
+     *
+     * @param request contains the user's email and raw password for authentication
+     * @return an AuthenticationResponse containing an access token, a refresh token, and authenticated = true
+     * @throws AppException with ErrorCode.USER_NOT_EXISTED if no user exists for the given email
+     * @throws AppException with ErrorCode.UNAUTHENTICATED if the password does not match
+     * @throws AppException with ErrorCode.USER_LOCKED if the user's account status is LOCKED
+     */
     @Override
     public AuthenticationResponse authenticate(AuthenticationRequest request) {
         var user = userRepository.findByEmail(request.getEmail())
@@ -88,6 +97,16 @@ public class AuthenticationServiceImpl implements AuthenticationService {
                 .build();
     }
 
+    /**
+     * Issues a new access token by validating and consuming the provided refresh token.
+     *
+     * Validates the refresh token, checks and updates the refresh-token blacklist to prevent reuse,
+     * loads the subject user, and returns a freshly generated access token for that user.
+     *
+     * @param request the refresh token request containing the token to refresh
+     * @return an AuthenticationResponse containing a new access token and authenticated = true
+     * @throws AppException with ErrorCode.UNAUTHENTICATED if the token is invalid, expired, revoked/blacklisted, or the user does not exist
+     */
     @Override
     public AuthenticationResponse refreshToken(RefreshTokenRequest request) {
         try {
@@ -121,6 +140,15 @@ public class AuthenticationServiceImpl implements AuthenticationService {
         }
     }
 
+    /**
+     * Revokes a refresh token by adding its JWT ID to the Redis blacklist for the remaining token lifetime.
+     *
+     * Verifies the provided token as a refresh token; if verification succeeds and the token has remaining
+     * validity, stores a "BLACKLIST:{jti}" entry with value "REVOKED" and TTL equal to the remaining milliseconds.
+     * Invalid or expired tokens are ignored.
+     *
+     * @param request the logout request containing the token to revoke
+     */
     @Override
     public void logout(LogoutRequest request) {
         try {
@@ -144,6 +172,12 @@ public class AuthenticationServiceImpl implements AuthenticationService {
         }
     }
 
+    /**
+     * Determines whether the provided token is valid and not revoked.
+     *
+     * @param request the introspection request containing the token to check
+     * @return an IntrospectResponse whose `valid` is `true` if the token's signature and expiry are valid and the token is not blacklisted, `false` otherwise
+     */
     @Override
     public IntrospectResponse introspect(IntrospectRequest request) {
         var token = request.getToken();
@@ -160,6 +194,17 @@ public class AuthenticationServiceImpl implements AuthenticationService {
                 .build();
     }
 
+    /**
+     * Create a signed JWT access token for the given user.
+     *
+     * The token's claims include subject (user id), issuer, issued-at, expiration,
+     * jwt id, a `scope` claim derived from the user's role, and — if the user's
+     * subscription is active — any user feature entries as additional claims.
+     *
+     * @param user the user for whom to generate the token; its id and role are used to build claims
+     * @return the serialized, signed JWT access token
+     * @throws RuntimeException if the token cannot be signed
+     */
     @Override
     public String generateToken(User user) {
         JWSHeader header = new JWSHeader(JWSAlgorithm.HS512);
@@ -201,6 +246,16 @@ public class AuthenticationServiceImpl implements AuthenticationService {
         }
     }
 
+    /**
+     * Verify a JWT string, ensure its signature and expiry (optionally using refreshable duration), and return the parsed SignedJWT.
+     *
+     * @param token the serialized JWT to verify
+     * @param isRefresh if true, consider the token refreshable and compute expiry from the token's issue time plus the refreshable duration; otherwise use the token's expiration claim
+     * @return the parsed and verified SignedJWT
+     * @throws JOSEException   if signature verification or cryptographic operations fail
+     * @throws ParseException  if the token cannot be parsed
+     * @throws AppException    if the token is invalid, expired, or has been blacklisted
+     */
     private SignedJWT verifyToken(String token, boolean isRefresh) throws JOSEException, ParseException {
         JWSVerifier verifier = new MACVerifier(SIGNER_KEY.getBytes());
         SignedJWT signedJWT = SignedJWT.parse(token);
@@ -221,6 +276,12 @@ public class AuthenticationServiceImpl implements AuthenticationService {
         return signedJWT;
     }
 
+    /**
+     * Builds a space-delimited scope string based on the user's role.
+     *
+     * @param user the user whose role will be included in the scope
+     * @return the scope string containing "ROLE_<ROLE_NAME>" when a role is present, or an empty string otherwise
+     */
     private String buildScope(User user) {
         StringJoiner stringJoiner = new StringJoiner(" ");
         if (user.getRole() != null) {
@@ -229,6 +290,17 @@ public class AuthenticationServiceImpl implements AuthenticationService {
         return stringJoiner.toString();
     }
 
+    /**
+     * Create a signed JWT refresh token for the given user.
+     *
+     * The token's claims include subject (user ID), issuer ("phazelsound.com"), issue time,
+     * expiration time set to now plus REFRESHABLE_DURATION seconds, a JWT ID, and a `scope` claim
+     * derived from the user's roles/features. The token is signed with HS512 using SIGNER_KEY.
+     *
+     * @param user the user for whom to generate the refresh token
+     * @return the serialized JWT refresh token string
+     * @throws RuntimeException if the token cannot be signed
+     */
     public String generateRefreshToken(User user) {
         JWSHeader header = new JWSHeader(JWSAlgorithm.HS512);
 
@@ -255,6 +327,18 @@ public class AuthenticationServiceImpl implements AuthenticationService {
         }
     }
 
+    /**
+     * Authenticates a user (or creates a new account) using an external identity provider token.
+     *
+     * This method accepts a provider token, obtains the user's email and profile from the provider
+     * (currently supports "google" and "facebook"), looks up or provisions a local User record,
+     * and returns newly issued access and refresh tokens.
+     *
+     * @param request the exchange token request containing the provider token
+     * @param type the identity provider type (case-insensitive), e.g. "google" or "facebook"
+     * @return an AuthenticationResponse containing an access token, a refresh token, and authenticated = true
+     * @throws AppException with ErrorCode.UNAUTHENTICATED if the provider response does not contain an email or the token is invalid
+     */
     @Override
     public AuthenticationResponse outboundAuthenticate(ExchangeTokenRequest request, String type) {
         String email = null;
@@ -321,6 +405,12 @@ public class AuthenticationServiceImpl implements AuthenticationService {
                 .build();
     }
 
+    /**
+     * Initiates a forgot-password flow by generating a one-time password (OTP) and sending it to the user's email.
+     *
+     * @param email the email address of the user requesting password reset
+     * @throws AppException if no user exists with the provided email (ErrorCode.USER_NOT_EXISTED)
+     */
     @Override
     public void forgotPassword(String email) {
         var user = userRepository.findByEmail(email)
@@ -338,6 +428,14 @@ public class AuthenticationServiceImpl implements AuthenticationService {
         rabbitTemplate.convertAndSend(RabbitMQConfig.EXCHANGE, RabbitMQConfig.EMAIL_ROUTING_KEY, event);
     }
 
+    /**
+     * Resets a user's password after validating a one-time password (OTP).
+     *
+     * Validates the provided OTP for the email in the request, then replaces the user's stored password with the encoded new password.
+     *
+     * @param request contains the target email, the OTP to validate, and the new password to set
+     * @throws AppException if the OTP is invalid or if no user exists for the given email
+     */
     @Override
     public void resetPassword(ResetPasswordRequest request) {
         boolean isValid = otpService.validateOtp(request.getEmail(), request.getOtp());

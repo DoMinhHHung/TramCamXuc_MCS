@@ -40,6 +40,14 @@ public class SecurityConfig {
     @Value("${jwt.signerKey}")
     private String signerKey;
 
+    /**
+     * Configure HTTP authorization rules, JWT-based OAuth2 resource server, OAuth2 login behavior, and CSRF,
+     * then build and return the SecurityFilterChain.
+     *
+     * @param httpSecurity the HttpSecurity instance to configure
+     * @return the configured SecurityFilterChain
+     * @throws Exception if an error occurs while configuring the security filter chain
+     */
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity httpSecurity) throws Exception {
         httpSecurity.authorizeHttpRequests(request ->
@@ -68,6 +76,11 @@ public class SecurityConfig {
         return httpSecurity.build();
     }
 
+    /**
+     * Configure a JwtAuthenticationConverter that extracts granted authorities from JWTs without adding an authority prefix.
+     *
+     * @return a JwtAuthenticationConverter that uses a JwtGrantedAuthoritiesConverter with an empty authority prefix
+     */
     @Bean
     JwtAuthenticationConverter jwtAuthenticationConverter() {
         JwtGrantedAuthoritiesConverter jwtGrantedAuthoritiesConverter = new JwtGrantedAuthoritiesConverter();
@@ -79,6 +92,11 @@ public class SecurityConfig {
         return jwtAuthenticationConverter;
     }
 
+    /**
+     * Create a JwtDecoder that validates and decodes JWTs using HMAC-SHA-512 with the configured signer key.
+     *
+     * @return a JwtDecoder that validates JWT signatures with the HS512 algorithm using the application's signer key
+     */
     @Bean
     JwtDecoder jwtDecoder() {
         SecretKeySpec secretKeySpec = new SecretKeySpec(signerKey.getBytes(), "HS512");

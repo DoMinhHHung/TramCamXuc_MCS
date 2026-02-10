@@ -8,6 +8,11 @@ import org.springframework.cloud.client.discovery.EnableDiscoveryClient;
 @EnableDiscoveryClient
 public class ServicePaymentApplication {
 
+    /**
+     * Application entry point that launches the ServicePayment Spring Boot application.
+     *
+     * @param args command-line arguments passed to the application
+     */
     public static void main(String[] args) {
         SpringApplication.run(ServicePaymentApplication.class, args);
     }

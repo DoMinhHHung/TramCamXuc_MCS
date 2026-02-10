@@ -43,6 +43,15 @@ public class PaymentServiceImpl implements PaymentService {
     private final RabbitTemplate rabbitTemplate;
     private final ObjectMapper objectMapper;
 
+    /**
+     * Creates a payment link for the specified user's requested subscription plan.
+     *
+     * @param userId the ID of the user initiating the payment
+     * @param request contains the requested plan ID and return/cancel URLs for checkout
+     * @return a PaymentResponse containing the checkout URL, generated order code, and QR code
+     * @throws AppException if the requested subscription plan does not exist (PLAN_NOT_FOUND)
+     * @throws RuntimeException if creation of the payment link with the external provider or persistence fails
+     */
     @Override
     @Transactional
     public PaymentResponse createPaymentLink(UUID userId, CreatePaymentRequest request) {
@@ -93,6 +102,17 @@ public class PaymentServiceImpl implements PaymentService {
         }
     }
 
+    /**
+     * Processes a PayOS webhook: verifies the payload, updates the corresponding transaction's status,
+     * and activates the user's subscription when payment succeeded.
+     *
+     * If the transaction for the webhook's order code is not found the method returns without action.
+     * If the transaction is already marked SUCCESS, the method is idempotent and returns.
+     * A webhook data code of "00" marks the transaction SUCCESS and triggers subscription activation;
+     * any other code marks the transaction FAILED.
+     *
+     * @param webhook the incoming webhook payload from PayOS
+     */
     @Override
     public void handleWebhook(Webhook webhook) {
         try{
@@ -122,6 +142,16 @@ public class PaymentServiceImpl implements PaymentService {
             log.error("Webhook processing error: ", e);
         }
     }
+    /**
+     * Activate or renew a user's subscription for the specified plan and publish a UserUpgradedEvent.
+     *
+     * Updates or creates the user's subscription record with appropriate start and end dates based on the plan,
+     * sets the subscription status to ACTIVE, persists the subscription, and emits a UserUpgradedEvent to RabbitMQ.
+     * Failures while publishing the event are caught and logged.
+     *
+     * @param userId the UUID of the user whose subscription will be activated or renewed
+     * @param planId the UUID of the subscription plan to apply to the user
+     */
     private void activateSubscription(UUID userId, UUID planId) {
         var plan = planRepository.findById(planId).orElseThrow();
 
@@ -168,6 +198,16 @@ public class PaymentServiceImpl implements PaymentService {
         }
     }
 
+    /**
+     * Compute the subscription end date based on the current time, the user's existing subscription, and the plan's duration.
+     *
+     * If the existing subscription is ACTIVE and its endDate is after `now`, the calculation starts from that endDate; otherwise it starts from `now`.
+     *
+     * @param now the reference time to use when the existing subscription does not extend past `now`
+     * @param subscription the user's current subscription (used to determine a deferred start when active)
+     * @param plan the subscription plan providing duration and duration unit
+     * @return the computed end date/time after adding the plan's duration (in its configured unit) to the chosen start date
+     */
     @NotNull
     private static LocalDateTime getLocalDateTime(LocalDateTime now, UserSubscription subscription, SubscriptionPlan plan) {
         LocalDateTime startDate = now;

@@ -15,6 +15,17 @@ public class NotificationListener {
 
     private final EmailService emailService;
 
+    /**
+     * Handle incoming NotificationEvent messages from the notification queue and send templated emails when the channel is EMAIL.
+     *
+     * <p>When the event's channel equals "EMAIL" (case-insensitive), selects an email subject and template (defaults:
+     * subject "Thông báo từ TramCamXuc", template "register-otp") and overrides them for known template codes:
+     * "REGISTER_OTP" -> subject "Xác thực đăng ký tài khoản", template "register-otp";
+     * "FORGOT_PASSWORD_OTP" -> subject "Mã OTP đặt lại mật khẩu", template "forgot-password". The selected subject,
+     * template, recipient, and event parameters are passed to the EmailService for delivery.</p>
+     *
+     * @param event the notification event containing recipient, channel, templateCode, and template parameters
+     */
     @RabbitListener(queues = RabbitMQConfig.NOTIFICATION_QUEUE)
     public void listen(NotificationEvent event) {
         log.info("Received event: {}", event);

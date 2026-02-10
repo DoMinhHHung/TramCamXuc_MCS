@@ -32,6 +32,9 @@ public class UserSubscription {
 
     private LocalDateTime updatedAt;
 
+    /**
+     * Sets the `updatedAt` timestamp to the current date and time immediately before the entity is updated.
+     */
     @PreUpdate
     protected void onUpdate() {
         updatedAt = LocalDateTime.now();

@@ -21,6 +21,14 @@ public class EmailService {
     private final JavaMailSender javaMailSender;
     private final SpringTemplateEngine templateEngine;
 
+    /**
+     * Render a Thymeleaf template with the given variables and send the result as an HTML email to the recipient.
+     *
+     * @param to           the recipient email address
+     * @param subject      the email subject
+     * @param templateName the Thymeleaf template name or path to render for the email body
+     * @param variables    the context variables to apply to the template (may be empty or null)
+     */
     public void sendEmail(String to, String subject, String templateName, Map<String, Object> variables) {
         try {
             Context context = new Context();

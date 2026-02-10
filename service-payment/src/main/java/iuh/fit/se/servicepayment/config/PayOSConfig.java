@@ -17,6 +17,11 @@ public class PayOSConfig {
     @Value("${payos.checksum-key}")
     private String checksumKey;
 
+    /**
+     * Creates and exposes a PayOS client configured with application credentials.
+     *
+     * @return a PayOS instance initialized with the configured clientId, apiKey, and checksumKey
+     */
     @Bean
     public PayOS payOS() {
         return new PayOS(clientId, apiKey, checksumKey);
