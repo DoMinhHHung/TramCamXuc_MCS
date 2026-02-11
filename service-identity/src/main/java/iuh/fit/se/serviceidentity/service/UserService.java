@@ -36,6 +36,10 @@ void resendRegistrationOtp(String email);
  * @param size the number of users per page
  * @return a PageResponse containing UserResponse items and pagination metadata
  */
+    UserResponse updateProfile(UserUpdateRequest request);
+    void changePassword(ChangePasswordRequest request);
+    PageResponse<UserResponse> getUsers(String keyword, int page, int size);
+
 PageResponse<UserResponse> getAllUsers(int page, int size);
     /**
  * Retrieve detailed information for the user identified by the given userId.

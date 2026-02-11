@@ -15,7 +15,8 @@ public enum ErrorCode {
     EMAIL_SEND_FAILED(1007, "Failed to send email", HttpStatus.INTERNAL_SERVER_ERROR),
     PASSWORD_EXISTED(1008, "Password existed", HttpStatus.BAD_REQUEST),
     ACCOUNT_ALREADY_VERIFIED(1009, "Account already verified", HttpStatus.BAD_REQUEST),
-    USER_LOCKED(1010, "User account is locked", HttpStatus.FORBIDDEN);
+    USER_LOCKED(1010, "User account is locked", HttpStatus.FORBIDDEN),
+    WRONG_PASSWORD(1011, "Wrong password", HttpStatus.BAD_REQUEST);
 
     private final int code;
     private final String message;

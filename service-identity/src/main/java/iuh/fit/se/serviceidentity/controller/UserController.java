@@ -76,10 +76,11 @@ public class UserController {
     @GetMapping
     public ApiResponse<PageResponse<UserResponse>> getAllUsers(
             @RequestParam(defaultValue = "1") int page,
-            @RequestParam(defaultValue = "10") int size
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(required = false) String keyword
     ) {
         return ApiResponse.<PageResponse<UserResponse>>builder()
-                .result(userService.getAllUsers(page, size))
+                .result(userService.getUsers(keyword, page, size))
                 .build();
     }
 
@@ -108,6 +109,21 @@ public class UserController {
         userService.toggleUserStatus(userId);
         return ApiResponse.<Void>builder()
                 .message("User status updated successfully")
+                .build();
+    }
+
+    @PutMapping("/me")
+    public ApiResponse<UserResponse> updateProfile(@RequestBody UserUpdateRequest request) {
+        return ApiResponse.<UserResponse>builder()
+                .result(userService.updateProfile(request))
+                .build();
+    }
+
+    @PostMapping("/change-password")
+    public ApiResponse<Void> changePassword(@RequestBody @Valid ChangePasswordRequest request) {
+        userService.changePassword(request);
+        return ApiResponse.<Void>builder()
+                .message("Password changed successfully")
                 .build();
     }
 }
