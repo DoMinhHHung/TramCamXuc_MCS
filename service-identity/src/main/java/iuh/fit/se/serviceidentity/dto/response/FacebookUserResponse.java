@@ -15,11 +15,6 @@ public class FacebookUserResponse {
     private String lastName;
     private PictureData picture;
 
-    / **
- * Gets the Facebook user's identifier.
- *
- * @return the user's Facebook ID
- */
 public String getId() { return id; }
     /**
  * Get the user's email address as provided by Facebook.

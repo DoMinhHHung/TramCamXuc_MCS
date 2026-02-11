@@ -8,7 +8,9 @@ public enum ErrorCode {
     UNCATEGORIZED_EXCEPTION(9999, "Uncategorized error", HttpStatus.INTERNAL_SERVER_ERROR),
     SONG_NOT_FOUND(1001, "Song not found", HttpStatus.NOT_FOUND),
     FILE_UPLOAD_FAILED(1002, "File upload failed", HttpStatus.INTERNAL_SERVER_ERROR),
-    INVALID_FILE_FORMAT(1003, "Invalid file format", HttpStatus.BAD_REQUEST);
+    INVALID_FILE_FORMAT(1003, "Invalid file format", HttpStatus.BAD_REQUEST),
+    GENRE_EXISTED(1004, "Genre already exists", HttpStatus.CONFLICT),
+    GENRE_NOT_FOUND(1005, "Genre not found", HttpStatus.NOT_FOUND);
 
     private int code;
     private String message;
