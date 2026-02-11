@@ -47,7 +47,7 @@ public class Artist {
     protected void onCreate() {
         createdAt = LocalDateTime.now();
         updatedAt = LocalDateTime.now();
-        if (status == null) status = ArtistStatus.PENDING;
+        if (status == null) status = ArtistStatus.ACTIVE;
     }
 
     @PreUpdate
