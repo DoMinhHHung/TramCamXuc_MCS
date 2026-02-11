@@ -1,9 +1,13 @@
 package iuh.fit.se.serviceidentity.service.impl;
 
+import com.cloudinary.Cloudinary;
+import com.cloudinary.utils.ObjectUtils;
 import iuh.fit.se.serviceidentity.config.RabbitMQConfig;
 import iuh.fit.se.serviceidentity.dto.event.NotificationEvent;
 import iuh.fit.se.serviceidentity.dto.mapper.UserMapper;
+import iuh.fit.se.serviceidentity.dto.request.ChangePasswordRequest;
 import iuh.fit.se.serviceidentity.dto.request.UserCreationRequest;
+import iuh.fit.se.serviceidentity.dto.request.UserUpdateRequest;
 import iuh.fit.se.serviceidentity.dto.request.VerifyEmailRequest;
 import iuh.fit.se.serviceidentity.dto.response.PageResponse;
 import iuh.fit.se.serviceidentity.dto.response.UserResponse;
@@ -25,7 +29,9 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.io.IOException;
 import java.util.Map;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -36,7 +42,7 @@ public class UserServiceImpl implements UserService {
     private final PasswordEncoder passwordEncoder;
     private final RabbitTemplate rabbitTemplate;
     private final OtpService otpService;
-
+    private final Cloudinary cloudinary;
     /**
      * Creates a new user account, persists it, generates a verification OTP, and publishes an email notification event.
      *
@@ -145,6 +151,64 @@ public class UserServiceImpl implements UserService {
         rabbitTemplate.convertAndSend(RabbitMQConfig.EXCHANGE, RabbitMQConfig.EMAIL_ROUTING_KEY, event);
     }
 
+    @Override
+    public UserResponse updateProfile(UserUpdateRequest request) {
+        var context = SecurityContextHolder.getContext();
+        String userId = context.getAuthentication().getName();
+
+        User user = userRepository.findById(UUID.fromString(userId))
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));
+
+        if (request.getAvatarUrl() != null && !request.getAvatarUrl().equals(user.getAvatarUrl())) {
+            if (user.getAvatarUrl() != null && user.getAvatarUrl().contains("cloudinary")) {
+                String oldPublicId = extractPublicId(user.getAvatarUrl());
+                try {
+                    cloudinary.uploader().destroy(oldPublicId, ObjectUtils.emptyMap());
+                    log.info("Deleted old avatar: {}", oldPublicId);
+                } catch (IOException e) {
+                    log.error("Failed to delete old avatar", e);}
+            }
+            user.setAvatarUrl(request.getAvatarUrl());
+        }
+        if (request.getFirstName() != null) user.setFirstName(request.getFirstName());
+        if (request.getLastName() != null) user.setLastName(request.getLastName());
+        if (request.getDob() != null) user.setDob(request.getDob());
+
+        return userMapper.toUserResponse(userRepository.save(user));
+    }
+
+    @Override
+    public void changePassword(ChangePasswordRequest request) {
+        var context = SecurityContextHolder.getContext();
+        String userId = context.getAuthentication().getName();
+        User user = userRepository.findById(UUID.fromString(userId))
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));
+
+        if (!passwordEncoder.matches(request.getOldPassword(), user.getPassword())) {
+            throw new AppException(ErrorCode.WRONG_PASSWORD);
+        }
+
+        user.setPassword(passwordEncoder.encode(request.getNewPassword()));
+        userRepository.save(user);
+    }
+
+    @Override
+    @PreAuthorize("hasRole('ADMIN')")
+    public PageResponse<UserResponse> getUsers(String keyword, int page, int size) {
+        Sort sort = Sort.by("createdAt").descending();
+        Pageable pageable = PageRequest.of(page - 1, size, sort);
+
+        var pageData = userRepository.searchUsers(keyword, pageable);
+
+        return PageResponse.<UserResponse>builder()
+                .currentPage(page)
+                .pageSize(pageData.getSize())
+                .totalPages(pageData.getTotalPages())
+                .totalElements(pageData.getTotalElements())
+                .data(pageData.getContent().stream().map(userMapper::toUserResponse).toList())
+                .build();
+    }
+
     /**
      * Retrieves a paginated list of users sorted by creation time in descending order.
      *
@@ -215,5 +279,17 @@ public class UserServiceImpl implements UserService {
 
         userRepository.save(user);
 
+    }
+
+    private String extractPublicId(String url) {
+        try {
+            String[] parts = url.split("/");
+            String filename = parts[parts.length - 1];
+            String publicId = filename.substring(0, filename.lastIndexOf("."));
+
+            return publicId;
+        } catch (Exception e) {
+            return null;
+        }
     }
 }
