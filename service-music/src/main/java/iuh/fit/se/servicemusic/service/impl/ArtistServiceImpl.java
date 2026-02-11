@@ -59,6 +59,12 @@ public class ArtistServiceImpl implements ArtistService {
         return mapToResponse(artist);
     }
 
+    @Override
+    public ArtistResponse getAllArtist() {
+        return artistRepository.findAll().stream().map(this::mapToResponse).findFirst().orElse(null);
+
+    }
+
     private ArtistResponse mapToResponse(Artist artist) {
         return ArtistResponse.builder()
                 .id(artist.getId())

@@ -15,7 +15,10 @@ public enum ErrorCode {
     ARTIST_ALREADY_REGISTERED(1007, "Artist profile already exists", HttpStatus.BAD_REQUEST),
     ARTIST_NOT_FOUND(1008, "Artist profile not found", HttpStatus.NOT_FOUND),
     TERMS_NOT_ACCEPTED(1009, "You must accept the terms and conditions", HttpStatus.BAD_REQUEST),
-    NOT_ELIGIBLE_FOR_ARTIST(1010, "Your subscription plan does not include artist features", HttpStatus.FORBIDDEN);
+    NOT_ELIGIBLE_FOR_ARTIST(1010, "Your subscription plan does not include artist features", HttpStatus.FORBIDDEN),
+
+    ONBOARDING_ALREADY_COMPLETED(1011, "Onboarding already completed", HttpStatus.BAD_REQUEST),
+    USER_PREFERENCES_NOT_FOUND(1012, "User preferences not found", HttpStatus.NOT_FOUND);
 
     private int code;
     private String message;

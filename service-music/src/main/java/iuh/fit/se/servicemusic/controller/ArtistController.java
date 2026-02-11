@@ -59,4 +59,11 @@ public class ArtistController {
                 .result(artistService.getArtistProfile(UUID.fromString(userId)))
                 .build();
     }
+
+    @GetMapping
+    public ApiResponse<ArtistResponse> getAllArtists() {
+        return ApiResponse.<ArtistResponse>builder()
+                .result(artistService.getAllArtist())
+                .build();
+    }
 }

@@ -8,4 +8,5 @@ import java.util.UUID;
 public interface ArtistService {
     ArtistResponse registerArtist(UUID userId, ArtistRegistrationRequest request);
     ArtistResponse getArtistProfile(UUID userId);
+    ArtistResponse getAllArtist();
 }
